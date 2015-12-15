@@ -49,7 +49,6 @@ import os
 import sys
 import threading
 
-from snakeoil import compatibility
 from snakeoil.modules import load_any
 
 # There are some demandloaded imports below the definition of demandload.
@@ -57,13 +56,7 @@ from snakeoil.modules import load_any
 _allowed_chars = "".join((x.isalnum() or x in "_.") and " " or "a"
                          for x in map(chr, xrange(256)))
 
-py3k_translate = {
-    "itertools": {"i%s" % k: k for k in ("filterfalse",)},
-    "ConfigParser": "configparser",
-    "Queue":"queue",
-    "StringIO":"io",
-    "cStringIO":"io",
-}
+module_translate = {}
 
 def parse_imports(imports):
     """Parse a sequence of strings describing imports.
@@ -100,11 +93,8 @@ def parse_imports(imports):
                 yield tuple(split)
             else:
                 split = split[0]
-                if compatibility.is_py3k:
-                    if isinstance(py3k_translate.get(split, None), str):
-                        yield py3k_translate[split], split
-                    else:
-                        yield split, split
+                if isinstance(module_translate.get(split, None), str):
+                    yield module_translate[split], split
                 else:
                     yield split, split
         else:
@@ -112,16 +102,14 @@ def parse_imports(imports):
             base, targets = fromlist
             if not base.translate(_allowed_chars).isspace():
                 raise ValueError("bad target: %s" % base)
-            if compatibility.is_py3k:
-                if isinstance(py3k_translate.get(base, None), str):
-                    base = py3k_translate[base]
+            if isinstance(module_translate.get(base, None), str):
+                base = module_translate[base]
             for target in targets.split(','):
                 split = target.split('@', 1)
                 for s in split:
                     if not s.translate(_allowed_chars).isspace():
                         raise ValueError("bad target: %s" % s)
-                if compatibility.is_py3k:
-                    split[0] = py3k_translate.get(base, {}).get(split[0], split[0])
+                split[0] = module_translate.get(base, {}).get(split[0], split[0])
                 yield base + '.' + split[0], split[-1]
 
 def _protection_enabled_disabled():

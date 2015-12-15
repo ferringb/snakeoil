@@ -12,7 +12,7 @@ involved in writing classes.
 from __future__ import print_function
 
 __all__ = (
-    "generic_equality", "reflective_hash", "inject_richcmp_methods_from_cmp",
+    "generic_equality", "reflective_hash",
     "static_attrgetter", "instance_attrgetter", "jit_attr", "jit_attr_none",
     "jit_attr_named", "jit_attr_ext_method", "alias_attr", "cached_hash",
     "cached_property", "cached_property_named",
@@ -24,7 +24,7 @@ from collections import deque
 from functools import partial, wraps
 from operator import attrgetter
 
-from snakeoil import caching, compatibility
+from snakeoil import caching
 from snakeoil.currying import post_curry
 from snakeoil.demandload import demandload
 
@@ -230,55 +230,6 @@ def generic_ge(self, other):
 def generic_gt(self, other):
     """reflective implementation of __gt__ that uses __cmp__"""
     return self.__cmp__(other) > 0
-
-
-def inject_richcmp_methods_from_cmp(scope, inject_always=False):
-    """
-    class namespace modifier injecting richcmp methods that rely on __cmp__ for py3k
-    compatibility
-
-    Note that this just injects generic implementations such as :py:func:`generic_lt`;
-    if a method already exists, it will not override it.  This behaviour is primarily
-    beneficial if the developer wants to optimize one specific method- __lt__ for sorting
-    reasons for example, but performance is less of a concern for the other
-    rich comparison methods.
-
-    Example usage:
-
-    >>> from snakeoil.klass import inject_richcmp_methods_from_cmp
-    >>> from snakeoil.compatibility import cmp
-    >>> class foo(object):
-    ...
-    ...   # note that for this example, we inject always since we're
-    ...   # explicitly accessing __ge__ methods- under py2k, they wouldn't
-    ...   # exist (__cmp__ would be sufficient).
-    ...
-    ...   # add the generic rich comparsion methods to the local class namespace
-    ...   inject_richcmp_methods_from_cmp(locals(), True)
-    ...
-    ...   def __init__(self, a, b):
-    ...     self.a, self.b = a, b
-    ...
-    ...   def __cmp__(self, other):
-    ...     c = cmp(self.a, other.a)
-    ...     if c == 0:
-    ...       c = cmp(self.b, other.b)
-    ...     return c
-    >>>
-    >>> assert foo(1, 2).__ge__(foo(1, 1))
-    >>> assert foo(1, 1).__eq__(foo(1, 1))
-
-    :param scope: the modifiable scope of a class namespace to work on
-    :param inject_always: normally injection is only done if it's py3k; if True,
-        it'll always inject the rich comparison methods
-    """
-
-    if not (inject_always or compatibility.is_py3k):
-        return
-    for key, func in (("__lt__", generic_lt), ("__le__", generic_le),
-                      ("__eq__", generic_eq), ("__ne__", generic_ne),
-                      ("__ge__", generic_ge), ("__gt__", generic_gt)):
-        scope.setdefault(key, func)
 
 
 class chained_getter(object):

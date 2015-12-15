@@ -80,7 +80,7 @@ from __future__ import print_function
 
 __all__ = ("DelayedInstantiation", "DelayedInstantiation_kls", "make_kls",)
 
-from snakeoil import compatibility, klass
+from snakeoil import klass
 
 
 # For our proxy, we have two sets of descriptors-
@@ -91,10 +91,9 @@ from snakeoil import compatibility, klass
 # pointless class creation- thus having two separate lists.
 
 base_kls_descriptors_compat = []
-if compatibility.is_py3k:
-    base_kls_descriptors_compat.extend([
-        "__%s__" % x for x in
-        ("le", "lt", "ge", "gt", "eq", "ne")])
+base_kls_descriptors_compat.extend([
+    "__%s__" % x for x in
+    ("le", "lt", "ge", "gt", "eq", "ne")])
 
 base_kls_descriptors = frozenset(
     ('__delattr__', '__hash__', '__reduce__',

@@ -215,7 +215,6 @@ def iter_sort(sorter, *iterables):
     For example:
 
     >>> from snakeoil.iterables import iter_sort
-    >>> from snakeoil.compatibility import cmp
     >>> iter1 = xrange(0, 5, 2)
     >>> iter2 = xrange(1, 6, 2)
     >>> # note that these lists will be consumed as they go,

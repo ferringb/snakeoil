@@ -15,7 +15,7 @@ import unittest
 import warnings
 
 from snakeoil import fileutils, klass
-from snakeoil.compatibility import IGNORED_EXCEPTIONS
+from snakeoil.exceptions import IGNORED_EXCEPTIONS
 
 
 def _tryResultCall(result, methodname, *args):

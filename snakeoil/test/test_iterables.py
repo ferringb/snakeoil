@@ -5,7 +5,6 @@ import operator
 
 from snakeoil.test import TestCase
 from snakeoil.iterables import expandable_chain, caching_iter, iter_sort
-from snakeoil import compatibility
 
 class ExpandableChainTest(TestCase):
 
@@ -84,8 +83,7 @@ class CachingIterTest(TestCase):
     @staticmethod
     def _py3k_protection(*args, **kwds):
         ci = caching_iter(*args, **kwds)
-        if compatibility.is_py3k:
-            ci = tuple(ci)
+        ci = tuple(ci)
         return ci
 
     def test_cmp(self):
@@ -102,13 +100,11 @@ class CachingIterTest(TestCase):
             get_inst(xrange(100, 0, -1), sorted), tuple(xrange(1, 101)))
         c = caching_iter(xrange(100, 0, -1), sorted)
         self.assertTrue(c)
-        if compatibility.is_py3k:
-            c = tuple(c)
+        c = tuple(c)
         self.assertEqual(c, tuple(xrange(1, 101)))
         c = caching_iter(xrange(50, 0, -1), sorted)
         self.assertEqual(c[10], 11)
-        if compatibility.is_py3k:
-            c = tuple(c)
+        c = tuple(c)
         self.assertEqual(tuple(xrange(1, 51)), c)
 
     def test_getitem(self):

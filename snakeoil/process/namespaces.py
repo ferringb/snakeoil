@@ -7,6 +7,7 @@ import ctypes.util
 import errno
 import os
 import signal
+import socket
 import subprocess
 import sys
 
@@ -63,25 +64,6 @@ def unshare(flags):
     """
     libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
     if libc.unshare(ctypes.c_int(flags)) != 0:
-        e = ctypes.get_errno()
-        raise OSError(e, os.strerror(e))
-
-
-def sethostname(name):
-    """Binding to the sethostname system call.
-
-    Mainly added for compatibility to py2 since socket.sethostname only exists
-    for py33 and up.
-
-    Args:
-        name: hostname to set
-
-    Raises:
-        OSError: if sethostname fails
-    """
-    libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
-    name = name.encode() if isinstance(name, basestring) else name
-    if libc.sethostname(name, len(name)) != 0:
         e = ctypes.get_errno()
         raise OSError(e, os.strerror(e))
 
@@ -270,7 +252,7 @@ def create_utsns(hostname=None):
     # hostname/domainname default to the parent namespace settings if unset
     if hostname is not None:
         hostname, _, domainname = hostname.partition('.')
-        sethostname(hostname)
+        socket.sethostname(hostname)
         if domainname:
             setdomainname(domainname)
 

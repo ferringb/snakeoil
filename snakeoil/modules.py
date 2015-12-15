@@ -10,17 +10,16 @@ __all__ = ("FailedImport", "load_module", "load_attribute", "load_any")
 from importlib import import_module
 import sys
 
-from snakeoil.compatibility import raise_from, IGNORED_EXCEPTIONS
+from snakeoil.exceptions import IGNORED_EXCEPTIONS
 
 
 class FailedImport(ImportError):
     """
     Raised when a requested target cannot be imported
     """
-    def __init__(self, trg, e):
-        ImportError.__init__(
-            self, "Failed importing target '%s': '%s'" % (trg, e))
-        self.trg, self.e = trg, e
+    def __init__(self, trg):
+        ImportError.__init__(self, "Failed importing target '%s'" % (trg,))
+        self.trg = trg
 
 
 def load_module(name):
@@ -39,7 +38,7 @@ def load_module(name):
     except IGNORED_EXCEPTIONS:
         raise
     except Exception as e:
-        raise_from(FailedImport(name, e))
+        raise FailedImport(name) from e
 
 
 def load_attribute(name):
@@ -54,11 +53,11 @@ def load_attribute(name):
     """
     chunks = name.rsplit(".", 1)
     if len(chunks) == 1:
-        raise FailedImport(name, "it isn't an attribute, it's a module")
+        raise FailedImport(name)
     try:
         return getattr(import_module(chunks[0]), chunks[1])
     except (AttributeError, ImportError) as e:
-        raise_from(FailedImport(name, e))
+        raise FailedImport(name) from e
 
 
 def load_any(name):
@@ -76,5 +75,5 @@ def load_any(name):
         return import_module(name)
     except Exception as e:
         if not isinstance(e, ImportError):
-            raise_from(FailedImport(name, e))
+            raise FailedImport(name) from e
     return load_attribute(name)

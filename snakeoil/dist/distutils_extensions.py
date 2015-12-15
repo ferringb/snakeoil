@@ -415,10 +415,3 @@ class test(Command):
 
         if retval:
             raise errors.DistutilsExecError("tests failed; return %i" % (retval,))
-
-
-# yes these are in snakeoil.compatibility; we can't rely on that module however
-# since snakeoil source is in 2k form, but this module is 2k/3k compatible.
-# in other words, it could be invoked by py3k to translate snakeoil to py3k
-is_py3k = sys.version_info >= (3, 0)
-is_jython = 'java' in getattr(sys, 'getPlatform', lambda: '')().lower()

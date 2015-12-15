@@ -13,14 +13,16 @@ del types
 from functools import partial
 import os
 
-from snakeoil import klass, compatibility
+from snakeoil import klass
 from snakeoil.currying import pretty_docs
 from snakeoil.demandload import demandload
 from snakeoil.weakrefs import WeakRefFinalizer
 
 demandload(
     'codecs',
+    'io',
     'mmap',
+    'snakeoil.exceptions:IGNORED_EXCEPTIONS',
     'snakeoil:data_source',
     'snakeoil:_fileutils',
 )
@@ -37,35 +39,20 @@ def touch(fname, mode=0o644, **kwargs):
     See os.utime for other supported arguments.
     """
     flags = os.O_CREAT | os.O_APPEND
-    if compatibility.is_py3k:
-        dir_fd = kwargs.get('dir_fd', None)
-        os_open = partial(os.open, dir_fd=dir_fd)
-    else:
-        os_open = os.open
+    dir_fd = kwargs.get('dir_fd', None)
+    os_open = partial(os.open, dir_fd=dir_fd)
 
     with os.fdopen(os_open(fname, flags, mode)) as f:
-        if compatibility.is_py3k:
-            os.utime(
-                f.fileno() if os.utime in os.supports_fd else fname,
-                dir_fd=None if os.supports_fd else dir_fd, **kwargs)
-        else:
-            os.utime(fname, kwargs.get('times', None))
+        os.utime(
+            f.fileno() if os.utime in os.supports_fd else fname,
+            dir_fd=None if os.supports_fd else dir_fd, **kwargs)
 
 
 def write_file(path, mode, stream, encoding=None):
     f = None
     try:
-        if compatibility.is_py3k:
-            f = open(path, mode, encoding=encoding)
-        elif encoding is not None:
-            f = codecs.open(path, mode, encoding=encoding)
-        else:
-            f = open(path, mode)
-
-        if compatibility.is_py3k:
-            if isinstance(stream, (str, bytes)):
-                stream = [stream]
-        elif isinstance(stream, basestring):
+        f = open(path, mode, encoding=encoding)
+        if isinstance(stream, (str, bytes)):
             stream = [stream]
 
         for data in stream:
@@ -83,7 +70,7 @@ def mmap_or_open_for_read(path):
         fd = os.open(path, os.O_RDONLY)
         return (_fileutils.mmap_and_close(
             fd, size, mmap.MAP_SHARED, mmap.PROT_READ), None)
-    except compatibility.IGNORED_EXCEPTIONS:
+    except IGNORED_EXCEPTIONS:
         raise
     except:
         try:
@@ -195,32 +182,19 @@ class AtomicWriteFile_mixin(object):
         self.discard()
 
 
-if not compatibility.is_py3k:
+class AtomicWriteFile(AtomicWriteFile_mixin):
 
-    class AtomicWriteFile(AtomicWriteFile_mixin, file):
+    __doc__ = AtomicWriteFile_mixin.__doc__
 
-        __doc__ = AtomicWriteFile_mixin.__doc__
+    def _actual_init(self):
+        self.raw = io.open(self._temp_fp, mode=self._computed_mode)
 
-        def _actual_init(self):
-            file.__init__(self, self._temp_fp, mode=self._computed_mode)
+    def _real_close(self):
+        if hasattr(self, 'raw'):
+            return self.raw.close()
+        return None
 
-        _real_close = file.close
-
-else:
-    import io
-    class AtomicWriteFile(AtomicWriteFile_mixin):
-
-        __doc__ = AtomicWriteFile_mixin.__doc__
-
-        def _actual_init(self):
-            self.raw = io.open(self._temp_fp, mode=self._computed_mode)
-
-        def _real_close(self):
-            if hasattr(self, 'raw'):
-                return self.raw.close()
-            return None
-
-        __getattr__ = klass.GetAttrProxy("raw")
+    __getattr__ = klass.GetAttrProxy("raw")
 
 
 def _mk_pretty_derived_func(func, name_base, name, *args, **kwds):

@@ -15,41 +15,10 @@ __all__ = (
 )
 
 from collections import defaultdict
-from itertools import imap, chain, ifilterfalse, izip
+from itertools import imap, chain, filterfalse, izip
 import operator
 
 from snakeoil.klass import get, contains, steal_docs
-from snakeoil import compatibility
-cmp = compatibility.cmp
-
-class autoconvert_py3k_methods_metaclass(type):
-
-    """
-    metaclass designed to transform a py2k target mapping into a py3k compliant mapping
-
-    Specifically, it'll drop the iter* prefix on relevant methods, and remove has_key
-
-    To use this, just `set __metaclass__ = autoconvert_py3k_methods_metaclass`.  At runtime,
-    the metaclass will rewrite the class if needed for py3k compatibility.
-
-    If you need to disable this behaviour, set `disable_py3k_rewriting=True` in the class
-    namespace- this is primarily useful if your derivative class handles the py2k/py3k difference
-    itself.
-    """
-    if compatibility.is_py3k:
-        # only do these modifications if we're running py3k.
-
-        def __new__(cls, name, bases, d):
-            d["__metaclass__"] = autoconvert_py3k_methods_metaclass
-            if not d.pop("disable_py3k_rewriting", False):
-                for var in ("keys", "values", "items", "has_key"):
-                    d.pop(var, None)
-                for var in ("keys", "values", "items"):
-                    itervar = 'iter%s' % var
-                    if itervar in d:
-                        d[var] = d.pop(itervar)
-                # ensure that the __metaclass__ attribute hangs around for usage by introspection
-            return super(autoconvert_py3k_methods_metaclass, cls).__new__(cls, name, bases, d)
 
 
 class DictMixin(object):
@@ -106,58 +75,18 @@ class DictMixin(object):
         for k in self:
             yield k, self[k]
 
-    # change our base method definitions dependent
-    # on if it's py2k or py3k; note that the
-    # autoconvert_py3k_methods_metaclass will move around
-    # methods as needed to match the py3k method layout,
-    # shifting iterkeys to keys for example
-    # note the only reason we do this if/else instead of
-    # relying on autoconvert_py3k_methods_metaclass is because
-    # for this base class, we need to steal the docs off of
-    # dictionary instances.
+    items = iteritems
+    items.__name__ = 'items'
+    items.__doc__ = dict.items.__doc__
+    del iteritems
 
-    if not compatibility.is_py3k:
-        iteritems.__doc__ = dict.__doc__
+    @steal_docs(dict)
+    def keys(self):
+        raise NotImplementedError(self, "iterkeys")
 
-        @steal_docs(dict)
-        def keys(self):
-            return list(self.iterkeys())
-
-        @steal_docs(dict)
-        def values(self):
-            return list(self.itervalues())
-
-        @steal_docs(dict)
-        def items(self):
-            return list(self.iteritems())
-
-        @steal_docs(dict, True)
-        def has_key(self, key):
-            return key in self
-
-        @steal_docs(dict)
-        def iterkeys(self):
-            raise NotImplementedError(self, "iterkeys")
-
-        @steal_docs(dict)
-        def itervalues(self):
-            return imap(self.__getitem__, self)
-
-        iteritems = steal_docs(dict)(iteritems)
-
-    else:
-        items = iteritems
-        items.__name__ = 'items'
-        items.__doc__ = dict.items.__doc__
-        del iteritems
-
-        @steal_docs(dict)
-        def keys(self):
-            raise NotImplementedError(self, "iterkeys")
-
-        @steal_docs(dict)
-        def values(self):
-            return imap(self.__getitem__, self)
+    @steal_docs(dict)
+    def values(self):
+        return imap(self.__getitem__, self)
 
     @steal_docs(dict)
     def update(self, iterable):
@@ -487,7 +416,7 @@ class StackedDict(DictMixin):
 
     def iterkeys(self):
         s = set()
-        for k in ifilterfalse(s.__contains__, chain(*map(iter, self._dicts))):
+        for k in filterfalse(s.__contains__, chain(*map(iter, self._dicts))):
             s.add(k)
             yield k
 
