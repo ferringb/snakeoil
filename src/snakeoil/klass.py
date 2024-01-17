@@ -30,6 +30,9 @@ __all__ = (
     "SlotsPicklingMixin",
     "DirProxy",
     "GetAttrProxy",
+    "contains",
+    "get",
+    "sentinel",
 )
 
 import inspect

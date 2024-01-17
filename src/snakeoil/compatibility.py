@@ -2,7 +2,7 @@
 Compatibility functionality stubs
 """
 
-__all__ = ("cmp", "sorted_cmp", "sort_cmp")
+__all__ = ("cmp", "IGNORED_EXCEPTIONS", "sorted_cmp", "sort_cmp")
 
 
 def sorted_key_from_cmp(cmp_func, key_func=None):
