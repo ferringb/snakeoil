@@ -19,9 +19,11 @@ from ..osutils.mount import (
     MS_REC,
     MS_RELATIME,
     MS_SLAVE,
+    mount as _mount,
 )
-from ..osutils.mount import mount as _mount
+
 from . import exit_as_status
+
 
 CLONE_FS = 0x00000200
 CLONE_FILES = 0x00000400
@@ -33,15 +35,15 @@ CLONE_NEWPID = 0x20000000
 CLONE_NEWNET = 0x40000000
 
 
-def setns(fd, nstype):
+def setns(fd: str | int, nstype: int, /) -> None:
     """Binding to the Linux setns system call. See setns(2) for details.
 
     :param fd: An open file descriptor or path to one.
     :param nstype: Namespace to enter; one of CLONE_*.
     :raises OSError: if setns failed.
     """
+    fp = None
     try:
-        fp = None
         if isinstance(fd, str):
             fp = open(fd)
             fd = fp.fileno()
@@ -55,7 +57,7 @@ def setns(fd, nstype):
             fp.close()
 
 
-def unshare(flags):
+def unshare(flags: int, /) -> None:
     """Binding to the Linux unshare system call. See unshare(2) for details.
 
     :param flags: Namespaces to unshare; bitwise OR of CLONE_* flags.
@@ -67,7 +69,7 @@ def unshare(flags):
         raise OSError(e, os.strerror(e))
 
 
-def _reap_children(pid):
+def _reap_children(pid: int, /) -> int:
     """Reap all children that get reparented to us until we see |pid| exit.
 
     :param pid: The main child to watch for.
@@ -90,8 +92,8 @@ def _reap_children(pid):
     return pid_status
 
 
-def _safe_tcsetpgrp(fd, pgrp):
-    """Set |pgrp| as the controller of the tty |fd|."""
+def _safe_tcsetpgrp(fd: int, pgrp: int) -> None:
+    """Set |pgrp| (process group) as the controller of the tty |fd|."""
     try:
         curr_pgrp = os.tcgetpgrp(fd)
     except OSError as e:
@@ -106,7 +108,7 @@ def _safe_tcsetpgrp(fd, pgrp):
         os.tcsetpgrp(fd, pgrp)
 
 
-def create_pidns():
+def create_pidns() -> int:
     """Start a new pid namespace
 
     This will launch all the right manager processes.  The child that returns
