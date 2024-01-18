@@ -36,6 +36,7 @@ pretty quickly.
 __all__ = (
     "abspath",
     "abssymlink",
+    "access",
     "ensure_dirs",
     "join",
     "pjoin",
