@@ -35,6 +35,7 @@ import sys
 from functools import partial
 
 from .compatibility import IGNORED_EXCEPTIONS
+from typing import Callable, Optional, TypeVar
 
 __all__ = ("pre_curry", "post_curry", "pretty_docs")
 
@@ -94,7 +95,12 @@ def post_curry(func, *args, **kwargs):
     return callit
 
 
-def pretty_docs(wrapped, extradocs=None, name=None):
+T = TypeVar("T", bound=Callable)
+
+
+def pretty_docs(
+    wrapped: T, extradocs: Optional[str] = None, name: Optional[str] = None
+) -> T:
     """
     Modify wrapped, so that it 'looks' like what it's wrapping.
 
@@ -107,8 +113,8 @@ def pretty_docs(wrapped, extradocs=None, name=None):
     :param name: ``__name__`` override for wrapped; else it pulls from
         wrapped's target functor for the name.
     """
-    wrapped.__module__ = wrapped.func.__module__
-    doc = wrapped.func.__doc__
+    wrapped.__module__ = wrapped.func.__module__  # type: ignore
+    doc = wrapped.func.__doc__  # type: ignore
     if extradocs is None:
         wrapped.__doc__ = doc
     else:
