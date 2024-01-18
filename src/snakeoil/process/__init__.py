@@ -9,9 +9,12 @@ import sys
 import time
 
 from ..osutils import access
+from typing import Iterable, Never, Optional
 
 
-def find_binary(binary: str, paths=None, fallback=None) -> str:
+def find_binary(
+    binary: str, paths: Optional[Iterable[str]] = None, fallback: Optional[str] = None
+) -> str:
     """look through the PATH environment, finding the binary to execute"""
 
     if os.path.isabs(binary):
@@ -33,7 +36,7 @@ def find_binary(binary: str, paths=None, fallback=None) -> str:
     raise CommandNotFound(binary)
 
 
-def get_exit_status(status: int):
+def get_exit_status(status: int) -> int:
     """Get the exit status of a child from an :py:func:`os.waitpid` call.
 
     :param status: The return value of ``os.waitpid(pid, 0)[1]``
@@ -48,7 +51,7 @@ def get_exit_status(status: int):
         return os.WEXITSTATUS(status)
 
 
-def exit_as_status(status: int):
+def exit_as_status(status: int) -> Never:
     """Exit the same way as `status`.
 
     If the status field says it was killed by a signal, then we'll do that to
@@ -84,11 +87,11 @@ def exit_as_status(status: int):
 
 
 class CommandNotFound(Exception):
-    def __init__(self, command):
+    def __init__(self, command: str) -> None:
         super().__init__(f"failed to find binary: {command!r}")
         self.command = command
 
 
 class ProcessNotFound(Exception):
-    def __init__(self, pid):
+    def __init__(self, pid: int) -> None:
         super().__init__(f"nonexistent process: {pid}")
