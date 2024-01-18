@@ -37,6 +37,7 @@ have to be careful with:
    previously mentioned workaround of demandloading the module works in this
    case as well.
 """
+from typing import cast, Iterable, Iterator, Tuple
 
 __all__ = ("demandload", "demand_compile_regexp")
 
@@ -54,7 +55,7 @@ _allowed_chars = "".join(
 )
 
 
-def parse_imports(imports):
+def parse_imports(imports: Iterable[str]) -> Iterator[Tuple[str, str]]:
     """Parse a sequence of strings describing imports.
 
     For every input string it returns a tuple of (import, targetname).
@@ -87,10 +88,9 @@ def parse_imports(imports):
                 if not s.translate(_allowed_chars).isspace():
                     raise ValueError(f"bad target: {s}")
             if len(split) == 2:
-                yield tuple(split)
+                yield cast(Tuple[str, str], tuple(split))
             else:
-                split = split[0]
-                yield split, split
+                yield split[0], split[0]
         else:
             # "from" import.
             base, targets = fromlist
@@ -104,20 +104,20 @@ def parse_imports(imports):
                 yield base + "." + split[0], split[-1]
 
 
-def _protection_enabled_disabled():
+def _protection_enabled_disabled() -> bool:
     return False
 
 
-def _noisy_protection_disabled():
+def _noisy_protection_disabled() -> bool:
     return False
 
 
-def _protection_enabled_enabled():
+def _protection_enabled_enabled() -> bool:
     val = os.environ.get("SNAKEOIL_DEMANDLOAD_PROTECTION", "n").lower()
     return val in ("yes", "true", "1", "y")
 
 
-def _noisy_protection_enabled():
+def _noisy_protection_enabled() -> bool:
     val = os.environ.get("SNAKEOIL_DEMANDLOAD_WARN", "y").lower()
     return val in ("yes", "true", "1", "y")
 
@@ -138,7 +138,9 @@ class Placeholder:
     """
 
     @classmethod
-    def load_namespace(cls, scope, name, target):
+    def load_namespace(
+        cls: type["Placeholder"], scope: dict, name: str, target: str
+    ) -> "Placeholder":
         """Object that imports modules into scope when first used.
 
         See the module docstring for common problems with its use; used by
@@ -149,7 +151,9 @@ class Placeholder:
         return cls(scope, name, functools.partial(load_any, target))
 
     @classmethod
-    def load_regex(cls, scope, name, *args, **kwargs):
+    def load_regex(
+        cls: type["Placeholder"], scope, name, *args, **kwargs
+    ) -> "Placeholder":
         """
         Compiled Regex object that knows how to replace itself when first accessed.
 
@@ -261,7 +265,7 @@ class Placeholder:
         return result(*args, **kwargs)
 
 
-def demandload(*imports, **kwargs):
+def demandload(*imports, **kwargs) -> None:
     """Import modules into the caller's global namespace when each is first used.
 
     Other args are strings listing module names.
@@ -320,6 +324,8 @@ if os.environ.get("SNAKEOIL_DEMANDLOAD_DISABLED", "n").lower() in (
     demandload = disabled_demandload
     demand_compile_regexp = disabled_demand_compile_regexp
 
+# mypy doesn't understand demandload injection into local scope.
+# mypy: disable-error-code = name-defined
 demandload(
     "logging",
     "re",
