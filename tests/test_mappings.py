@@ -1,5 +1,6 @@
 import operator
 from itertools import chain
+import typing
 
 import pytest
 from snakeoil import mappings
@@ -74,6 +75,85 @@ class TestDictMixin:
         assert d
         del d["x"]
         assert not d
+
+    def test_update(self):
+        d = MutableDict()
+
+        def sort(x):
+            return list(sorted(getattr(x, "items", getattr(x, "__iter__"))()))
+
+        # this is stupid, but it's how dict.update() behaves.
+        assert d.update() is None
+        assert sort(d) == sort({})
+
+        pytest.raises(TypeError, d.update, {1: 2}, {2: 3})
+
+        assert (
+            d.update(x=2) is None
+        ), "assert that .update returns None per dict.update norms"
+        assert sort(d) == sort({"x": 2})
+
+        assert (
+            d.update({"x": 3}, y=4) is None
+        ), "assert mappings can be passed along with kwargs"
+        assert sort(d) == sort({"x": 3, "y": 4}), "mapping was not integrated properly"
+
+        assert (
+            d.update((k, 2) for k in ["x", "y"]) is None
+        ), "assert mappings can accept iterables"
+        assert sort(d.items()) == sort(
+            {"x": 2, "y": 2}
+        ), "iterable was not integrated properly"
+
+        class ConfirmKeys:
+            def __init__(self, data=typing.Mapping[str, int]):
+                self.enable_keys = hasattr(data, "keys")
+                self.invoked = {}.fromkeys(
+                    ["hasattr", "keys", "getitem", "iter"], False
+                )
+                self.data = data
+
+            def __getattr__(self, key):
+                if key == "keys":
+                    self.invoked["hasattr"] = True
+                    if self.enable_keys:
+
+                        def f():
+                            self.invoked["keys"] = True
+                            return self.data.keys()
+
+                        return f
+                raise AttributeError(key)
+
+            def __iter__(self):
+                self.invoked["iter"] = True
+                return iter(self.data)
+
+            def __getitem__(self, key):
+                assert (
+                    self.enable_keys
+                ), "update used subscript [key], but should only be using iterable protocol"
+                self.invoked["getitem"] = True
+                return self.data[key]
+
+        d = MutableDict({"x": 1, "y": 2})
+        c = ConfirmKeys(dict(x=3, z=3))
+
+        assert d.update(c) is None
+        assert c.invoked == dict(
+            iter=False, getitem=True, keys=True, hasattr=True
+        ), f"mapping protocol (keys and getitem) must be invoked, and not iter; got {c.invoked}r"
+        assert sort(d) == sort(dict(x=3, y=2, z=3))
+
+        c = ConfirmKeys(dict(x=1, y=2, a=4).items())
+        assert d.update(c) is None
+        assert c.invoked == dict(
+            iter=True,
+            getitem=False,
+            keys=False,
+            hasattr=True,
+        ), f"iterable protocol should have been used (hasattr/iter); got {c.invoked}r"
+        assert sort(d) == sort(dict(x=1, y=2, z=3, a=4))
 
 
 class RememberingNegateMixin:

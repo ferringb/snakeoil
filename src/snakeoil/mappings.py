@@ -1,6 +1,7 @@
 """
 Miscellaneous mapping related classes and functionality
 """
+from typing import Any, Callable, cast, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 __all__ = (
     "DictMixin",
@@ -18,7 +19,7 @@ __all__ = (
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping, MutableSet, Set
+from collections.abc import Hashable, Mapping, MutableSet, Set
 from functools import partial
 from itertools import chain, filterfalse, islice
 
@@ -79,8 +80,20 @@ class DictMixin:
         return map(self.__getitem__, self)
 
     @steal_docs(dict)
-    def update(self, iterable):
+    def update(
+        self,
+        iterable: Iterable[Tuple[Hashable, Any]] | Mapping[Hashable, Any] = (),
+        /,
+        **kwargs: Any,
+    ) -> None:
+        # this matches how python does dict.update at the c level.
+        if hasattr(iterable, "keys"):
+            # stash a copy for the generator usage rather than adding another frame via func
+            mapping = cast(dict, iterable)
+            iterable = ((k, mapping[k]) for k in mapping.keys())
         for k, v in iterable:
+            self[k] = v
+        for k, v in kwargs.items():
             self[k] = v
 
     get = get
