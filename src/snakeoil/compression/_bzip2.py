@@ -11,6 +11,7 @@ Use this module unless it's absolutely critical that the bz2 module is used.
 __all__ = ("compress_data", "decompress_data")
 
 import multiprocessing
+import typing
 from functools import partial
 
 from .. import process
@@ -38,15 +39,18 @@ except ImportError:
 _compress_handle = partial(_util.compress_handle, bz2_path)
 _decompress_handle = partial(_util.decompress_handle, bz2_path)
 
+lbzip2_path: typing.Optional[str] = None
+parallelizable = False
+lbzip2_compress_args: tuple[str] = typing.cast(tuple[str], ())
+lbzip2_decompress_args = lbzip2_compress_args
 try:
     lbzip2_path = process.find_binary("lbzip2")
-    lbzip2_compress_args = (f"-n{multiprocessing.cpu_count()}",)
-    lbzip2_decompress_args = lbzip2_compress_args
+    lbzip2_decompress_args = lbzip2_compress_args = (
+        f"-n{multiprocessing.cpu_count()}",
+    )
     parallelizable = True
 except process.CommandNotFound:
-    lbzip2_path = None
-    parallelizable = False
-    lbzip2_compress_args = lbzip2_decompress_args = ()
+    pass
 
 
 def compress_data(data, level=9, parallelize=False):
