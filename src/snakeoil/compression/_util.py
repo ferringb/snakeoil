@@ -3,9 +3,23 @@ __all__ = ("compress_data", "decompress_data")
 import errno
 import os
 import subprocess
+from typing import (
+    Any,
+    cast,
+    IO,
+    Iterable,
+    Literal,
+    Optional,
+    Protocol,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
 
-def _drive_process(args, mode, data):
+def _drive_process(
+    args: Sequence[str], mode: Literal["decompression", "compression"], data: bytes
+) -> bytes:
     p = subprocess.Popen(
         args,
         stdin=subprocess.PIPE,
@@ -26,51 +40,57 @@ def _drive_process(args, mode, data):
             p.kill()
 
 
-def compress_data(binary, data, compresslevel=9, extra_args=()):
+def compress_data(
+    binary: str, data: bytes, compresslevel=9, extra_args: Iterable[str] = ()
+) -> bytes:
     args = [binary, f"-{compresslevel}c"]
     args.extend(extra_args)
     return _drive_process(args, "compression", data)
 
 
-def decompress_data(binary, data, extra_args=()):
+def decompress_data(binary: str, data: bytes, extra_args: Iterable[str] = ()) -> bytes:
     args = [binary, "-dc"]
     args.extend(extra_args)
     return _drive_process(args, "decompression", data)
 
 
 class _process_handle:
-    def __init__(self, handle, args, is_read=False):
+    handle: IO[Any]
+
+    def __init__(
+        self, handle: IO[Any] | str | int, args: Iterable[str], is_read=False
+    ) -> None:
         self.mode = "rb" if is_read else "wb"
 
-        self.args = tuple(args)
+        self.args: Sequence[str] = tuple(args)
         self.is_read = is_read
         self._open_handle(handle)
 
-    def _open_handle(self, handle):
+    def _open_handle(self, handle: IO[Any] | str | int) -> None:
         self._allow_reopen = None
         close = False
         if isinstance(handle, str):
             if self.is_read:
                 self._allow_reopen = handle
-            handle = open(handle, mode=self.mode)
+            handle = open(cast(str, handle), mode=self.mode)
             close = True
         elif not isinstance(handle, int):
             if not hasattr(handle, "fileno"):
                 raise TypeError(
                     f"handle {handle!r} isn't a string, integer, and lacks a fileno method"
                 )
-            handle = handle.fileno()
+            handle = cast(IO[Any], handle).fileno()
 
         try:
-            self._setup_process(handle)
+            self._setup_process(cast(int | IO[Any], handle))
         finally:
             if close:
-                handle.close()
+                handle.close()  # type: ignore
 
-    def _setup_process(self, handle):
+    def _setup_process(self, handle: IO[Any] | int) -> None:
         self.position = 0
         stderr = open(os.devnull, "wb")
-        kwds = dict(stderr=stderr)
+        kwds: dict[str, Any] = dict(stderr=stderr)
         if self.is_read:
             kwds["stdin"] = handle
             kwds["stdout"] = subprocess.PIPE
@@ -83,12 +103,11 @@ class _process_handle:
         finally:
             stderr.close()
 
-        if self.is_read:
-            self.handle = self._process.stdout
-        else:
-            self.handle = self._process.stdin
+        self.handle = cast(
+            IO[Any], self._process.stdout if self.is_read else self._process.stdin
+        )
 
-    def read(self, amount=None):
+    def read(self, amount: Optional[int] = None) -> bytes:
         if amount is None:
             data = self.handle.read()
         else:
@@ -97,14 +116,14 @@ class _process_handle:
         self.position += len(data)
         return data
 
-    def write(self, data):
+    def write(self, data: bytes) -> None:
         self.position += len(data)
         self.handle.write(data)
 
-    def tell(self):
+    def tell(self) -> int:
         return self.position
 
-    def seek(self, position=0):
+    def seek(self, position=0) -> int:
         fwd_seek = position - self.position
         if fwd_seek < 0:
             if self._allow_reopen is None:
@@ -122,14 +141,14 @@ class _process_handle:
                 self._write_seek(fwd_seek)
         return self.position
 
-    def _read_seek(self, offset, seek_size=(64 * 1024)):
+    def _read_seek(self, offset: int, seek_size=(64 * 1024)) -> None:
         val = min(offset, seek_size)
         while val:
             self.read(val)
             offset -= val
             val = min(offset, seek_size)
 
-    def _write_seek(self, offset, seek_size=64 * 1024):
+    def _write_seek(self, offset: int, seek_size=64 * 1024) -> None:
         val = min(offset, seek_size)
         # allocate up front a null block so we can avoid
         # reallocating it continually; via this usage, we
@@ -141,7 +160,7 @@ class _process_handle:
             offset -= val
             val = min(offset, seek_size)
 
-    def _terminate(self):
+    def _terminate(self) -> None:
         try:
             self._process.terminate()
         except EnvironmentError as exc:
@@ -149,7 +168,7 @@ class _process_handle:
             if exc.errno != errno.ESRCH:
                 raise
 
-    def close(self):
+    def close(self) -> None:
         if not hasattr(self, "_process"):
             return
         if self._process.returncode is not None:
@@ -165,7 +184,7 @@ class _process_handle:
         else:
             self._process.wait()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
 
