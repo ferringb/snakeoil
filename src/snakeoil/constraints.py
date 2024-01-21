@@ -37,19 +37,24 @@ class Constraint(Protocol):
 
 
 class _Domain(list):
-    def __init__(self, items: Iterable[Any]):
+    # Given a list/domain, these are the values currently hidden and removed from the domain
+    _hidden: list[Any]
+    # This a list of each checkpoint into _hidden to capture the delta to rewind the domain to that state.
+    _states: list[int]
+
+    def __init__(self, items: Iterable[Any]) -> None:
         super().__init__(items)
         self._hidden = []
         self._states = []
 
-    def hide_value(self, value):
+    def hide_value(self, value: Any) -> None:
         super().remove(value)
         self._hidden.append(value)
 
-    def push_state(self):
+    def push_state(self) -> None:
         self._states.append(len(self))
 
-    def pop_state(self):
+    def pop_state(self) -> None:
         if diff := self._states.pop() - len(self):
             self.extend(self._hidden[-diff:])
             del self._hidden[-diff:]
@@ -77,14 +82,14 @@ class Problem:
         single value from it's domain.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.variables: dict[str, _Domain] = {}
         self.constraints: list[tuple[Constraint, frozenset[str]]] = []
         self.vconstraints: dict[
             str, list[tuple[Constraint, frozenset[str]]]
         ] = defaultdict(list)
 
-    def add_variable(self, domain: Iterable[Any], *variables: str):
+    def add_variable(self, domain: Iterable[Any], *variables: str) -> None:
         """Add variables to the problem, which use the specified domain.
 
         :param domain: domain of possible values for the variables.
@@ -103,7 +108,7 @@ class Problem:
             ), f"variable {variable!r} was already added"
             self.variables[variable] = _Domain(domain)
 
-    def add_constraint(self, constraint: Constraint, variables: frozenset[str]):
+    def add_constraint(self, constraint: Constraint, variables: frozenset[str]) -> None:
         """Add constraint to the problem, which depends on the specified
         variables.
 
@@ -140,7 +145,8 @@ class Problem:
                 return bool(domain)
         return True
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[dict[str, Any]]:
+        """Iterate through the assignment/solutions, yielding them"""
         for constraint, variables in self.constraints:
             if len(variables) == 1:
                 variable, *_ = variables
@@ -152,7 +158,7 @@ class Problem:
                 self.vconstraints[variable].remove((constraint, variables))
 
         assignments: dict[str, Any] = {}
-        queue: list[tuple[str, _Domain, tuple[_Domain, ...]]] = []
+        queue: list[tuple[str, list[Any], tuple[_Domain, ...]]] = []
 
         while True:
             # mix the Degree and Minimum Remaining Values (MRV) heuristics
