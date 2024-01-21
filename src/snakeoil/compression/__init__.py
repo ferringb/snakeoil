@@ -1,5 +1,7 @@
 import multiprocessing
 import shlex
+import types
+import typing
 from functools import cached_property
 from importlib import import_module
 
@@ -9,14 +11,14 @@ from ..process.spawn import spawn_get_output
 
 
 class _transform_source:
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
 
     @cached_property
-    def module(self):
+    def module(self) -> types.ModuleType:
         return import_module(f"snakeoil.compression._{self.name}")
 
-    def compress_data(self, data, level, parallelize=False):
+    def compress_data(self, data, level: int, parallelize=False):
         parallelize = parallelize and self.module.parallelizable
         return self.module.compress_data(data, level, parallelize=parallelize)
 
@@ -24,7 +26,7 @@ class _transform_source:
         parallelize = parallelize and self.module.parallelizable
         return self.module.decompress_data(data, parallelize=parallelize)
 
-    def compress_handle(self, handle, level, parallelize=False):
+    def compress_handle(self, handle, level: int, parallelize=False):
         parallelize = parallelize and self.module.parallelizable
         return self.module.compress_handle(handle, level, parallelize=parallelize)
 
@@ -55,7 +57,7 @@ def decompress_handle(compressor_type, source, **kwds):
 class ArCompError(UserException):
     """Generic archive and compressed file error."""
 
-    def __init__(self, msg, code=-1):
+    def __init__(self, msg: str, code=-1):
         super().__init__(msg)
         self.code = code
 
@@ -63,9 +65,10 @@ class ArCompError(UserException):
 class ArComp:
     """Generic archive and compressed file format support."""
 
-    binary = None
-    default_unpack_cmd = None
-    known_exts = {}
+    binary: tuple[str, ...]
+    default_unpack_cmd: typing.Optional[str] = None
+    known_exts: dict[str, typing.Any] = {}
+    exts: frozenset[str]
 
     def __new__(cls, *args, ext, **kwargs):
         try:
@@ -74,7 +77,7 @@ class ArComp:
         except KeyError:
             raise ArCompError(f"unknown compression file extension: {ext!r}")
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         """Initialize result subclasses and register archive extensions."""
         super().__init_subclass__(**kwargs)
         if not all((cls.binary, cls.default_unpack_cmd, cls.exts)):  # pragma: no cover
@@ -153,7 +156,7 @@ class _Tar(_Archive, ArComp):
         "gtar",
         "tar",
     )
-    compress_binary = None
+    compress_binary: typing.Optional[tuple[tuple[str, ...], ...]] = None
     default_unpack_cmd = '{binary} xf "{path}"'
 
     @cached_property
@@ -169,7 +172,7 @@ class _Tar(_Archive, ArComp):
                 except process.CommandNotFound:
                     pass
             else:
-                choices = ", ".join(next(zip(*self.compress_binary)))
+                choices = ", ".join(b[0] for b in self.compress_binary)
                 raise ArCompError(
                     "no compression binary found from the "
                     f"following choices: {choices}"
@@ -189,7 +192,7 @@ class _TarBZ2(_Tar):
 
 class _TarLZMA(_Tar):
     exts = frozenset([".tar.lzma"])
-    compress_binary = ("lzma",)
+    compress_binary = (("lzma",),)
 
 
 class _TarXZ(_Tar):
@@ -205,13 +208,20 @@ class _Zip(_Archive, ArComp):
 
 class _GZ(_CompressedStdin, ArComp):
     exts = frozenset([".gz", ".Z", ".z"])
-    binary = ("pigz", "gzip")
+    binary = (
+        "pigz",
+        "gzip",
+    )
     default_unpack_cmd = "{binary} -d -c"
 
 
 class _BZ2(_CompressedStdin, ArComp):
     exts = frozenset([".bz2", ".bz"])
-    binary = ("lbzip2", "pbzip2", "bzip2")
+    binary = (
+        "lbzip2",
+        "pbzip2",
+        "bzip2",
+    )
     default_unpack_cmd = "{binary} -d -c"
 
 
