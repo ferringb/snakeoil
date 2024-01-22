@@ -4,6 +4,7 @@ file related operations, mainly reading
 
 import mmap
 import os
+from typing import Optional
 from functools import partial
 
 from . import _fileutils, data_source
@@ -12,7 +13,9 @@ from .currying import pretty_docs
 from .klass import GetAttrProxy
 
 
-def touch(fname: str, mode: int = 0o644, dir_fd=None, **kwargs):
+def touch(
+    fname: str, mode: int = 0o644, dir_fd: Optional[int] = None, **kwargs
+) -> None:
     """touch(1) equivalent
 
     :param fname: file path
@@ -34,7 +37,7 @@ def mmap_or_open_for_read(path: str):
     size = os.stat(path).st_size
     if size == 0:
         return (None, data_source.bytes_ro_StringIO(b""))
-    fd = None
+    fd: Optional[int] = None
     try:
         fd = os.open(path, os.O_RDONLY)
         return (
@@ -43,12 +46,12 @@ def mmap_or_open_for_read(path: str):
         )
     except IGNORED_EXCEPTIONS:
         raise
-    except:
-        try:
-            os.close(fd)
-        except EnvironmentError:
-            pass
-        raise
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except EnvironmentError:
+                pass
 
 
 class AtomicWriteFile_mixin:
