@@ -15,9 +15,11 @@ import errno
 import itertools
 import mmap
 import os
+import typing
+from typing import Any, AnyStr, IO, Iterable, Iterator, Optional
 
 
-def mmap_and_close(fd, *args, **kwargs):
+def mmap_and_close(fd: int, *args, **kwargs) -> mmap.mmap:
     """
     see :py:obj:`mmap.mmap`; basically this maps, then closes, to ensure the
     fd doesn't bleed out.
@@ -34,7 +36,13 @@ def mmap_and_close(fd, *args, **kwargs):
 class readlines_iter:
     __slots__ = ("iterable", "mtime", "source")
 
-    def __init__(self, iterable, mtime, close=True, source=None):
+    def __init__(
+        self,
+        iterable: Iterator[AnyStr],
+        mtime: int,
+        close=True,
+        source: Optional[IO[Any]] = None,
+    ) -> None:
         if source is None:
             source = iterable
         self.source = source
@@ -44,7 +52,7 @@ class readlines_iter:
         self.mtime = mtime
 
     @staticmethod
-    def _close_on_stop(source):
+    def _close_on_stop(source) -> Iterator[None]:
         # we explicitly write this to force this method to be
         # a generator; we intend to return nothing, but close
         # the file on the way out.
@@ -56,7 +64,7 @@ class readlines_iter:
             yield None
         source.close()
 
-    def close(self):
+    def close(self) -> None:
         if hasattr(self.source, "close"):
             self.source.close()
 
@@ -65,12 +73,12 @@ class readlines_iter:
 
 
 def native_readlines(
-    mode,
-    mypath,
+    mode: str,
+    mypath: str,
     strip_whitespace=True,
     swallow_missing=False,
     none_on_missing=False,
-    encoding=None,
+    encoding: Optional[str] = None,
 ):
     """Read a file, yielding each line.
 
@@ -98,12 +106,16 @@ def native_readlines(
     return readlines_iter(_strip_whitespace_filter(iterable), mtime, source=handle)
 
 
-def _strip_whitespace_filter(iterable):
+def _strip_whitespace_filter(
+    iterable: Iterable[typing.AnyStr],
+) -> Iterator[typing.AnyStr]:
     for line in iterable:
         yield line.strip()
 
 
-def native_readfile(mode, mypath, none_on_missing=False, encoding=None):
+def native_readfile(
+    mode: str, mypath: str, none_on_missing=False, encoding: Optional[str] = None
+) -> Optional[AnyStr]:
     """Read a file, returning the contents.
 
     :param mypath: fs path for the file to read

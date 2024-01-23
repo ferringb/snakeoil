@@ -1,7 +1,17 @@
 """
 Miscellaneous mapping related classes and functionality
 """
-from typing import Any, Callable, cast, Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    cast,
+    Generic,
+    Iterable,
+    Iterator,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 __all__ = (
     "DictMixin",
@@ -26,7 +36,11 @@ from itertools import chain, filterfalse, islice
 from .klass import contains, get, sentinel, steal_docs
 
 
-class DictMixin:
+KT = TypeVar("KT", bound=Hashable)
+VT = TypeVar("VT", bound=Any)
+
+
+class DictMixin(Generic[KT, VT]):
     """
     new style class replacement for :py:func:`UserDict.DictMixin`
     designed around iter* methods rather then forcing lists as DictMixin does
@@ -45,7 +59,9 @@ class DictMixin:
     __slots__ = ()
     __externally_mutable__ = True
 
-    def __init__(self, iterable=None, **kwargs):
+    def __init__(
+        self, iterable: Optional[Iterable[tuple[KT, VT]]] = None, **kwargs: VT
+    ) -> None:
         """
         :param iterables: optional, an iterable of (key, value) to initialize this
             instance with
@@ -59,32 +75,32 @@ class DictMixin:
             self.update(kwargs.items())
 
     @steal_docs(dict)
-    def __iter__(self):
+    def __iter__(self) -> Iterator[KT]:
         return self.keys()
 
     @steal_docs(dict)
-    def __str__(self):
+    def __str__(self) -> str:
         return str(dict(self.items()))
 
     @steal_docs(dict)
-    def items(self):
+    def items(self) -> Iterator[tuple[KT, VT]]:
         for k in self:
             yield k, self[k]
 
     @steal_docs(dict)
-    def keys(self):
+    def keys(self) -> Iterator[KT]:
         raise NotImplementedError(self, "keys")
 
     @steal_docs(dict)
-    def values(self):
+    def values(self) -> Iterator[VT]:
         return map(self.__getitem__, self)
 
     @steal_docs(dict)
     def update(
         self,
-        iterable: Iterable[Tuple[Hashable, Any]] | Mapping[Hashable, Any] = (),
+        iterable: Iterable[Tuple[KT, VT]] | Mapping[KT, VT] = (),
         /,
-        **kwargs: Any,
+        **kwargs: VT,
     ) -> None:
         # this matches how python does dict.update at the c level.
         if hasattr(iterable, "keys"):
@@ -100,7 +116,7 @@ class DictMixin:
     __contains__ = contains
 
     @steal_docs(dict)
-    def __eq__(self, other):
+    def __eq__(self, other: Mapping[Any, Any]) -> bool:
         if len(self) != len(other):
             return False
         for k1, k2 in zip(sorted(self), sorted(other)):
@@ -111,11 +127,11 @@ class DictMixin:
         return True
 
     @steal_docs(dict)
-    def __ne__(self, other):
+    def __ne__(self, other: Mapping[Any, Any]) -> bool:
         return not self.__eq__(other)
 
     @steal_docs(dict)
-    def pop(self, key, default=sentinel):
+    def pop(self, key: KT, default: VT | Literal[sentinel] = sentinel) -> VT:
         if not self.__externally_mutable__:
             raise AttributeError(self, "pop")
         try:
