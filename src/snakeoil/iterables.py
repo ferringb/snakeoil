@@ -11,7 +11,10 @@ from collections import deque
 T = typing.TypeVar("T")
 
 
-def partition(iterable, predicate=bool):
+def partition(
+    iterable: typing.Iterable[T],
+    predicate: typing.Callable[[T], bool] = bool,
+) -> tuple[typing.Iterator[T], typing.Iterator[T]]:
     """Partition an iterable into two iterables based on a given filter.
 
     Taking care that the predicate is called only once for each element.
@@ -94,7 +97,7 @@ class expandable_chain(typing.Generic[T]):
         self.iterables.extendleft(iter(x) for x in iterables)
 
 
-class caching_iter:
+class caching_iter(typing.Generic[T]):
     """
     On demand consumes from an iterable so as to appear like a tuple
 
@@ -112,7 +115,11 @@ class caching_iter:
 
     __slots__ = ("iterable", "__weakref__", "cached_list", "sorter")
 
-    def __init__(self, iterable, sorter=None):
+    def __init__(
+        self,
+        iterable: typing.Iterable[T],
+        sorter: typing.Callable[[typing.Iterable[T]], typing.Iterable[T]] | None = None,
+    ) -> None:
         self.sorter = sorter
         self.iterable = iter(iterable)
         self.cached_list = []
@@ -120,7 +127,7 @@ class caching_iter:
     def __setitem__(self, key, val):
         raise TypeError("unmodifiable")
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> T:
         existing_len = len(self.cached_list)
         if self.iterable is not None and self.sorter:
             self.cached_list.extend(self.iterable)
@@ -211,7 +218,7 @@ class caching_iter:
             self.iterable = None
         return len(self.cached_list)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[T]:
         if self.sorter is not None and self.iterable is not None:
             if self.cached_list:
                 self.cached_list.extend(self.iterable)
