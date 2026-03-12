@@ -80,14 +80,14 @@ sentinel = object()
 T = typing.TypeVar("T")
 
 
-def GetAttrProxy(target):
+def GetAttrProxy(target: str) -> typing.Callable[[typing.Any, str], typing.Any]:
     def reflected_getattr(self, attr):
         return getattr(object.__getattribute__(self, target), attr)
 
     return reflected_getattr
 
 
-def DirProxy(target):
+def DirProxy(target: str) -> typing.Callable[[typing.Any], list[str]]:
     def combined_dir(obj):
         attrs = dir(getattr(obj, target))
         try:
@@ -99,7 +99,7 @@ def DirProxy(target):
     return combined_dir
 
 
-def contains(self, key):
+def contains(self: typing.Any, key: typing.Any) -> bool:
     """
     return True if key is in self, False otherwise
     """
@@ -111,7 +111,7 @@ def contains(self, key):
         return False
 
 
-def get(self, key, default=None):
+def get(self: typing.Any, key: typing.Any, default: typing.Any = None) -> typing.Any:
     """
     return ``default`` if ``key`` is not in self, else the value associated with ``key``
     """
@@ -121,7 +121,7 @@ def get(self, key, default=None):
         return default
 
 
-def reflective_hash(attr):
+def reflective_hash(attr: str) -> typing.Callable[[typing.Any], int]:
     """
     default __hash__ implementation that returns a pregenerated hash attribute
 
@@ -386,7 +386,9 @@ static_attrgetter = deprecated(
 )(chained_getter)
 
 
-def cached_hash(func):
+def cached_hash(
+    func: typing.Callable[[typing.Any], int],
+) -> typing.Callable[[typing.Any], int]:
     """
     decorator to cache the hash value.
 
