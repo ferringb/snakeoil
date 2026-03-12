@@ -6,9 +6,10 @@ implementation having to reuse parts of snakeoil.klass.
 """
 
 import operator
+from typing import Any, Callable
 
 
-def alias_method(attr, name=None, doc=None):
+def alias_method(attr: str, name: str | None = None, doc: str | None = None) -> Callable[..., Any]:
     """at runtime, redirect to another method
 
     This is primarily useful for when compatibility, or a protocol requires
