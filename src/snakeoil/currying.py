@@ -32,13 +32,18 @@ if possible.
 """
 
 from functools import partial
+from typing import Any, Callable, ParamSpec, TypeVar
 
 from .compatibility import IGNORED_EXCEPTIONS
 
 __all__ = ("pre_curry", "post_curry", "pretty_docs")
 
+T = TypeVar("T")
+P = ParamSpec("P")
 
-def pre_curry(func, *args, **kwargs):
+
+# TODO: lace typing.concatenate through this.
+def pre_curry(func: Callable[..., T], *args: Any, **kwargs: Any) -> Callable[..., T]:
     """passed in args are prefixed, with further args appended
 
     Unlike partial, this is usable as an instancemethod.
@@ -67,7 +72,7 @@ def pre_curry(func, *args, **kwargs):
     return callit
 
 
-def post_curry(func, *args, **kwargs):
+def post_curry(func: Callable[..., T], *args: Any, **kwargs: Any) -> Callable[..., T]:
     """passed in args are appended to any further args supplied"""
 
     if not kwargs:
@@ -93,7 +98,9 @@ def post_curry(func, *args, **kwargs):
     return callit
 
 
-def pretty_docs(wrapped, extradocs=None, name=None):
+def pretty_docs(
+    wrapped: Callable[P, T], extradocs: str | None = None, name: str | None = None
+) -> Callable[P, T]:
     """
     Modify wrapped, so that it 'looks' like what it's wrapping.
 
