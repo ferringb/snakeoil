@@ -81,7 +81,7 @@ T = typing.TypeVar("T")
 
 
 def GetAttrProxy(target: str) -> typing.Callable[[typing.Any, str], typing.Any]:
-    def reflected_getattr(self, attr):
+    def reflected_getattr(self, attr: str) -> typing.Any:
         return getattr(object.__getattribute__(self, target), attr)
 
     return reflected_getattr
