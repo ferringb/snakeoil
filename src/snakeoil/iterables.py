@@ -22,7 +22,8 @@ def partition(
     :param iterable: target iterable to split into two
     :param predicate: filtering function used to split the iterable
     :return: A tuple of iterators, the first containing items that don't match the
-        filter and the second the matched items.
+        filter and the second the matched items.  Consumption of one does not influence
+        the results of the other- they are seperate iterables.
     """
     a, b = itertools.tee((predicate(x), x) for x in iterable)
     return ((x for pred, x in a if not pred), (x for pred, x in b if pred))

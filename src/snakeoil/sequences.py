@@ -194,7 +194,7 @@ T2 = TypeVar("T2")
 @overload
 def predicate_split(
     func: Callable[[T], bool], stream: Iterable[T], /, key: Literal[None] = None
-): ...
+) -> tuple[list[T], list[T]]: ...
 
 
 @overload
@@ -203,9 +203,10 @@ def predicate_split(
     stream: Iterable[T],
     /,
     key: Callable[[T], T2] | None = None,
-): ...
+) -> tuple[list[T], list[T]]: ...
 
 
+@deprecated("use snakeoil.iterables.partition instead", removal_in=(0, 12, 0))
 def predicate_split(func, stream: Iterable[T], /, key=None) -> tuple[list[T], list[T]]:
     """
     Given a stream and a function, split the stream into two sequences based on
