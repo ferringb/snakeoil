@@ -6,6 +6,7 @@ import subprocess
 from contextlib import AbstractContextManager, contextmanager
 from contextlib import chdir as _contextlib_chdir
 from importlib import import_module
+from typing import Iterable, Iterator
 
 from snakeoil._internals import deprecated
 from snakeoil.python_namespaces import protect_imports
@@ -17,13 +18,18 @@ from .sequences import predicate_split
 class GitStash(AbstractContextManager):
     """Context manager for stashing untracked or modified/uncommitted files."""
 
-    def __init__(self, path, pathspecs=None, staged=False):
+    def __init__(
+        self,
+        path: str | os.PathLike[str],
+        pathspecs: Iterable[str] = (),
+        staged=False,
+    ) -> None:
         self.path = path
-        self.pathspecs = ["--"] + pathspecs if pathspecs else []
+        self.pathspecs = ["--"] + list(pathspecs)
         self._staged = ["--keep-index"] if staged else []
         self._stashed = False
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Stash all untracked or modified files in working tree."""
         # check for untracked or modified/uncommitted files
         try:
@@ -109,66 +115,33 @@ def syspath(path: str, condition: bool = True, position: int = 0):
 
 
 @contextmanager
-def os_environ(*remove, **update):
+def os_environ(*remove: str, **update: str) -> Iterator[None]:
     """Mangle the ``os.environ`` dictionary and revert on exit.
+
+    This is explicitly not thread safe.  It however takes steps to mutate os.environ rather than
+    replacing the instance, so any references held to os.environ will be updated.
 
     :param remove: variables to remove
     :param update: variable -> value mapping to add or alter
     """
-    env = os.environ
-    update = update or {}
-    remove = remove or []
-
-    # variables being updated or removed
-    changed = (set(update) | set(remove)) & set(env)
-    # variables to restore on exit
-    update_after = {k: env[k] for k in changed}
-    # variables to remove on exit
-    remove_after = frozenset(k for k in update if k not in env)
+    orig_env = os.environ.copy()
 
     try:
-        env.update(update)
+        os.environ.update(update)
         for k in remove:
-            env.pop(k, None)
+            os.environ.pop(k, None)
         yield
     finally:
-        env.update(update_after)
-        for k in remove_after:
-            env.pop(k)
+        for k in os.environ:
+            if k not in orig_env:
+                os.environ.pop(k)
+        os.environ.update(orig_env)
 
 
-# Ideas and code for the patch context manager have been borrowed from mock
-# (https://github.com/testing-cabal/mock) governed by the BSD-2 license found
-# below.
-#
-# Copyright (c) 2007-2013, Michael Foord & the mock team
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-#     * Redistributions of source code must retain the above copyright
-#       notice, this list of conditions and the following disclaimer.
-#
-#     * Redistributions in binary form must reproduce the above
-#       copyright notice, this list of conditions and the following
-#       disclaimer in the documentation and/or other materials provided
-#       with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
+@deprecated(
+    "use unittest.mock.patch instead",
+    removal_in=(0, 12, 0),
+)
 @contextmanager
 def patch(target, new):
     """Simplified module monkey patching via context manager.
@@ -176,6 +149,37 @@ def patch(target, new):
     :param target: Target class or object.
     :param new: Object or value to replace the target with.
     """
+
+    # Ideas and code for the patch context manager have been borrowed from mock
+    # (https://github.com/testing-cabal/mock) governed by the BSD-2 license found
+    # below.
+    #
+    # Copyright (c) 2007-2013, Michael Foord & the mock team
+    # All rights reserved.
+    #
+    # Redistribution and use in source and binary forms, with or without
+    # modification, are permitted provided that the following conditions are
+    # met:
+    #
+    #     * Redistributions of source code must retain the above copyright
+    #       notice, this list of conditions and the following disclaimer.
+    #
+    #     * Redistributions in binary form must reproduce the above
+    #       copyright notice, this list of conditions and the following
+    #       disclaimer in the documentation and/or other materials provided
+    #       with the distribution.
+    #
+    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    # A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    # OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    # SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    # DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     def _import_module(target):
         components = target.split(".")

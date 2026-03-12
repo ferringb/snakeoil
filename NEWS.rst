@@ -5,6 +5,11 @@ Release Notes
 snakeoil 0.11.1 (unreleased)
 --------------------------------
 
+API deprecations
+~~~~~~~~~~~~~~~~
+
+* `snakeoil.contexts.patch`.  Use `unittest.mock.patch` instead.  Removal in `0.12.0`
+
 Packaging
 ~~~~~~~~~~
 
