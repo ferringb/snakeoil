@@ -1,11 +1,15 @@
 """String related methods."""
 
+from collections.abc import Sized
+
 from .delayed import regexp
 
 _whitespace_regex = regexp(r"^(?P<indent>\s+)")
 
 
-def pluralism(obj, none=None, singular="", plural="s"):
+def pluralism(
+    obj: int | Sized, none: str | None = None, singular="", plural="s"
+) -> str:
     """Return singular or plural suffix depending on object's length or value."""
     # default to plural for empty objects, e.g. there are 0 repos
     if none is None:
@@ -24,7 +28,7 @@ def pluralism(obj, none=None, singular="", plural="s"):
     return plural
 
 
-def doc_dedent(s):
+def doc_dedent(s: str) -> str:
     """Support dedenting docstrings with initial line having no indentation."""
     indent: str = ""
     try:
